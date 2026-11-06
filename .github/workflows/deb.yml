@@ -1,0 +1,14 @@
+name: Deb build push notify
+on:
+  push:
+    branches:
+      - main
+      - dev-test
+  workflow_dispatch:
+
+jobs:
+  deb:
+    uses: IMIO/gha-workflows/.github/workflows/deb-build-push-notify.yml@v1
+    secrets: inherit
+    with:
+      distributions: '["bookworm", "trixie"]'
