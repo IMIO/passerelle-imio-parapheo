@@ -207,15 +207,19 @@ class Parapheo(BaseResource):
                 ],
             }
         }
+        acroform = to_bool(post_data.get("acroform"))
         if seal:
-            data["sealData"] = {"sealCode": self.seal_code, "users": [self.seal_user]}
+            data["sealData"] = {"sealCode": self.seal_code, "users": [self.seal_user], "acroform": acroform}
+            if acroform:
+                # Balise {{#"ID":"SCEAU",...#}} dans le PDF
+                data["sealData"]["placeholderName"] = "SCEAU"
         if signers:
             data["signData"] = {
                 "users": signers,
                 # Toujours explicite : la valeur par défaut de l'API est la méthode OTP de staging
                 "signCode": self.sign_code,
                 "enforceUsersOrder": to_bool(post_data.get("ordered")),
-                "acroform": to_bool(post_data.get("acroform")),
+                "acroform": acroform,
                 "watchers": watchers,
             }
 
@@ -247,6 +251,7 @@ class Parapheo(BaseResource):
         perm="OPEN",
         pattern=r"^(?P<id>[0-9a-f]{32})/$",
         example_pattern="{id}/",
+        parameters={"id": {"description": "Identifiant de la session", "example_value": "0123456789abcdef0123456789abcdef"}},
         description="Notifications d'apims-esign",
         display_order=4,
         display_category="Signature",
@@ -255,7 +260,11 @@ class Parapheo(BaseResource):
         session = self.get_signing_session(id)
         notification = json.loads(request.body)
         session.notifications.append(notification)
-        session.code = notification.get("code")
+        # apims-esign envoie le code en texte ("21", "23"...)
+        try:
+            session.code = int(notification.get("code"))
+        except (TypeError, ValueError):
+            session.code = None
         value = notification.get("value") or {}
         if value.get("sign_session_url"):
             session.sign_url = value["sign_session_url"]
@@ -336,4 +345,3 @@ class SigningSession(models.Model):
             "sign_url": self.sign_url,
             "updated": self.updated.isoformat() if self.updated else None,
         }
-
