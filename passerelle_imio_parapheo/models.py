@@ -136,7 +136,8 @@ class Parapheo(BaseResource):
         response.raise_for_status()
 
     def check_signers(self, signers):
-        # Un signataire sans compte LuxTrust ou sans image de signature fait échouer la session
+        # Un signataire sans compte LuxTrust fait échouer la session
+        # (pas de contrôle de l'image : une signature par défaut est utilisée si aucune n'a été uploadée)
         problems = []
         for email in signers:
             if not is_valid_email(email):
@@ -150,8 +151,6 @@ class Parapheo(BaseResource):
             user = response.json()
             if not user.get("has_account"):
                 problems.append(f"{email} ne s'est jamais connecté à LuxTrust")
-            elif not user.get("has_signature"):
-                problems.append(f"{email} n'a pas enregistré son image de signature")
         if problems:
             raise APIError("Signataires pas prêts : " + ", ".join(problems), http_status=400)
 
